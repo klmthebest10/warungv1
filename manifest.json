@@ -9,7 +9,7 @@
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#f4f4f0",
-  "theme_color": "#FFD500",
+  "theme_color": "#FFFFFF",
   "lang": "id",
   "icons": [
     {
