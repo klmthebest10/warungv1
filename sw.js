@@ -1,32 +1,28 @@
-const CACHE_NAME = 'warung-app-v1';
-
-// File utama yang harus disimpan ke memori HP saat pertama kali buka web
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html', // Sesuaikan jika nama file html Anda bukan index.html
-  '/manifest.json',
-  '/icon-192.png'
+const CACHE_NAME = 'warung-pos-v1';
+const STATIC_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
-// Event Install: Menyimpan file-file penting ke Cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting(); // Langsung aktifkan service worker versi terbaru
+  self.skipWaiting();
 });
 
-// Event Activate: Membersihkan cache versi lama jika ada pembaruan
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Menghapus cache lama:', cache);
-            return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
           }
         })
       );
@@ -35,23 +31,22 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Event Fetch: Network First, Fallback to Cache
 self.addEventListener('fetch', (event) => {
-  // Hanya memproses request dengan metode GET
+  // Hanya proses request GET
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        // Jika sukses terhubung internet, simpan/perbarui file ke cache
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
-        return response;
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
       })
       .catch(() => {
-        // Jika offline/gagal internet, ambil file dari cache
         return caches.match(event.request);
       })
   );
