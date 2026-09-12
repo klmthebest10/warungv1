@@ -1,24 +1,29 @@
 {
   "name": "Warung Mbak Wiwin",
-  "short_name": "Warung Mbak Wiwin",
-  "description": "Aplikasi Kasir dan Katalog Warung Mbak Wiwin",
-  "start_url": "/",
+  "short_name": "Warung POS",
+  "description": "Aplikasi Kasir dan Pesanan Warung Mbak Wiwin",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f4f4f0",
-  "theme_color": "#FFFFFF",
+  "theme_color": "#FFD500",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ]
 }
