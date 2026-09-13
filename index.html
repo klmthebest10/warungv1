@@ -1311,8 +1311,8 @@ function saveLocalDataCache() {
         if(IS_PREVIEW || !supabase) return;
         showLoad();
         try {
-            const { data: s } = await supabase.from('settings').select('*').eq('id', 'app_config').maybeSingle();
-            if (s) {
+            const { data: s, error: sErr } = await supabase.from('settings').select('*').eq('id', 'app_config').maybeSingle();
+            if (!sErr && s) {
                 STATE.data.settings = {
                     storeName: s.store_name,
                     bankName: s.bank_name,
@@ -1333,8 +1333,8 @@ function saveLocalDataCache() {
                 };
             }
 
-            const { data: c } = await supabase.from('categories').select('*');
-            if (c) {
+            const { data: c, error: cErr } = await supabase.from('categories').select('*');
+            if (!cErr && c && c.length > 0) {
                 STATE.data.categories = c.map(cat => cat.id);
                 if (STATE.data.settings.categoryOrder && STATE.data.settings.categoryOrder.length > 0) {
                     STATE.data.categories.sort((a, b) => {
@@ -1357,13 +1357,13 @@ function saveLocalDataCache() {
                 }));
             }
 
-            const { data: tbl } = await supabase.from('tables').select('*');
-            if (tbl) {
+            const { data: tbl, error: tblErr } = await supabase.from('tables').select('*');
+            if (!tblErr && tbl && tbl.length > 0) {
                 STATE.data.tables = tbl.map(t => ({ id: t.id, name: t.name }));
             }
 
-            const { data: cls } = await supabase.from('table_calls').select('*');
-            if (cls) {
+            const { data: cls, error: clsErr } = await supabase.from('table_calls').select('*');
+            if (!clsErr && cls) {
                 STATE.calls = cls.map(cl => ({
                     id: cl.id,
                     table: cl.table_name,
@@ -1371,7 +1371,13 @@ function saveLocalDataCache() {
                     date: cl.created_at || cl.date
                 }));
             }
-        } catch(e) { console.error(e); } finally { hideLoad(); }
+            saveLocalDataCache();
+        } catch(e) { 
+            console.error('Fetch public data error, falling back to cache:', e);
+            loadLocalDataCache();
+        } finally { 
+            hideLoad(); 
+        }
     }
 
     async function fetchAllData() {
@@ -1380,8 +1386,8 @@ function saveLocalDataCache() {
         try {
             await fetchPublicData();
             
-            const { data: cust } = await supabase.from('customers').select('*');
-            if (cust) {
+            const { data: cust, error: custErr } = await supabase.from('customers').select('*');
+            if (!custErr && cust && cust.length > 0) {
                 STATE.data.customers = cust.map(c => ({
                     id: c.id,
                     name: c.name,
@@ -1392,8 +1398,8 @@ function saveLocalDataCache() {
                 }));
             }
 
-            const { data: ord } = await supabase.from('orders').select('*');
-            if (ord) {
+            const { data: ord, error: ordErr } = await supabase.from('orders').select('*');
+            if (!ordErr && ord && ord.length > 0) {
                 const mappedOrders = ord.map(o => ({
                     id: o.id,
                     date: o.date,
@@ -1421,7 +1427,13 @@ function saveLocalDataCache() {
                 }
                 STATE.data.orders = validOrders;
             }
-        } catch(e) { console.error(e); } finally { hideLoad(); }
+            saveLocalDataCache();
+        } catch(e) { 
+            console.error('Fetch all data error, falling back to cache:', e);
+            loadLocalDataCache();
+        } finally { 
+            hideLoad(); 
+        }
     }
 
     window.addEventListener('load', async () => {
@@ -2384,6 +2396,11 @@ function saveLocalDataCache() {
             available: Boolean(document.getElementById('prodAvail').checked) 
         };
         try { 
+            if(!IS_PREVIEW && supabase) { 
+                const { error: saveErr } = await supabase.from('products').upsert(payload); 
+                if (saveErr) throw saveErr;
+            }
+            
             const localIdx = STATE.data.products.findIndex(x => x.id === payload.id);
             if(localIdx !== -1) {
                 STATE.data.products[localIdx] = payload;
@@ -2391,13 +2408,6 @@ function saveLocalDataCache() {
                 STATE.data.products.push(payload);
             }
             saveLocalDataCache();
-
-            if(!IS_PREVIEW && supabase) { 
-                const { error: saveErr } = await supabase.from('products').upsert(payload); 
-                if (saveErr) {
-                    console.warn('Supabase product sync warning:', saveErr.message);
-                }
-            }
             
             STATE.tempProdImgBase64 = '';
             window.closeModal('modalAddProduct'); 
@@ -2408,10 +2418,10 @@ function saveLocalDataCache() {
                 window.renderCustomerCatalog();
             }
             hideLoad();
-            await window.customAlert('Tersimpan!', 'Sukses');
+            await window.customAlert('Tersimpan ke database & lokal!', 'Sukses');
         } catch(e) { 
             hideLoad();
-            await window.customAlert(e.message, 'Gagal'); 
+            await window.customAlert("Gagal menyimpan produk: " + e.message, "Gagal"); 
         }
     };
 
