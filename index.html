@@ -2367,13 +2367,13 @@
             } else {
                 STATE.data.products.push(payload);
             }
+            STATE.tempProdImgBase64 = '';
             window.closeModal('modalAddProduct'); 
             window.renderAdminProducts(); 
-            if (document.getElementById('pageAdminPOS') && !document.getElementById('pageAdminPOS').classList.contains('d-none')) {
-                window.renderAdminPOS();
-            }
-            if (document.getElementById('pagePublic') && !document.getElementById('pagePublic').classList.contains('d-none')) {
-                window.renderPublicCatalog();
+            window.renderAdminPOS();
+            window.renderPublicCatalog();
+            if (STATE.user && STATE.user.role === 'customer') {
+                window.renderCustomerCatalog();
             }
             hideLoad();
             await window.customAlert('Tersimpan!', 'Sukses');
@@ -3022,25 +3022,37 @@
         };
 
         try { 
+            STATE.data.settings = {
+                ...STATE.data.settings,
+                storeName: payload.store_name, 
+                bankName: payload.bank_name, 
+                bankAcc: payload.bank_acc,
+                ownerName: payload.owner_name, 
+                logoUrl: payload.logo_url, 
+                ownerPass: payload.owner_pass,
+                posEnabled: payload.pos_enabled, 
+                cardEnabled: payload.card_enabled, 
+                customerEnabled: payload.customer_enabled,
+                deliveryEnabled: payload.delivery_enabled, 
+                tableEnabled: payload.table_enabled,
+                callEnabled: payload.call_enabled, 
+                customCallAudio: payload.custom_call_audio,
+                autoReset: payload.auto_reset, 
+                resetPeriod: payload.reset_period
+            };
+
             if(!IS_PREVIEW && supabase) { 
-                await supabase.from('settings').upsert({ id: 'app_config', ...payload }); 
+                const { error: setErr } = await supabase.from('settings').upsert({ id: 'app_config', ...payload }); 
+                if (setErr) throw setErr;
                 await fetchPublicData(); 
-            } else { 
-                STATE.data.settings = {
-                    ...STATE.data.settings,
-                    storeName: payload.store_name, bankName: payload.bank_name, bankAcc: payload.bank_acc,
-                    ownerName: payload.owner_name, logoUrl: payload.logo_url, ownerPass: payload.owner_pass,
-                    posEnabled: payload.pos_enabled, cardEnabled: payload.card_enabled, customerEnabled: payload.customer_enabled,
-                    deliveryEnabled: payload.delivery_enabled, tableEnabled: payload.table_enabled,
-                    callEnabled: payload.call_enabled, customCallAudio: payload.custom_call_audio,
-                    autoReset: payload.auto_reset, resetPeriod: payload.reset_period
-                }; 
             } 
             
             updateHeader(); 
             updateNavMenu();
             window.updateCallButtonsVisibility();
             window.switchAdminTab('settings');
+            window.renderAdminPOS();
+            window.renderPublicCatalog();
 
             hideLoad();
             await window.customAlert('Pengaturan tersimpan!', 'Sukses'); 
