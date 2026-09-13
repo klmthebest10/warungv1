@@ -1044,9 +1044,11 @@ function saveLocalDataCache() {
                 settings: STATE.data.settings,
                 products: STATE.data.products,
                 categories: STATE.data.categories,
-                tables: STATE.data.tables
+                tables: STATE.data.tables,
+                customers: STATE.data.customers,
+                orders: STATE.data.orders
             }));
-        } catch(e) {}
+        } catch(e) { console.warn('Cache save warning:', e); }
     }
 
     function loadLocalDataCache() {
@@ -1058,8 +1060,10 @@ function saveLocalDataCache() {
                 if(Array.isArray(parsed.products) && parsed.products.length > 0) STATE.data.products = parsed.products;
                 if(Array.isArray(parsed.categories) && parsed.categories.length > 0) STATE.data.categories = parsed.categories;
                 if(Array.isArray(parsed.tables) && parsed.tables.length > 0) STATE.data.tables = parsed.tables;
+                if(Array.isArray(parsed.customers) && parsed.customers.length > 0) STATE.data.customers = parsed.customers;
+                if(Array.isArray(parsed.orders) && parsed.orders.length > 0) STATE.data.orders = parsed.orders;
             }
-        } catch(e) {}
+        } catch(e) { console.warn('Cache load warning:', e); }
     }
 
     const showLoad = () => document.getElementById('globalLoader').classList.remove('d-none');
@@ -1341,8 +1345,8 @@ function saveLocalDataCache() {
                 }
             }
 
-            const { data: p } = await supabase.from('products').select('*');
-            if (p) {
+            const { data: p, error: pErr } = await supabase.from('products').select('*');
+            if (!pErr && p && p.length > 0) {
                 STATE.data.products = p.map(prod => ({
                     id: prod.id,
                     name: prod.name,
@@ -2380,23 +2384,22 @@ function saveLocalDataCache() {
             available: Boolean(document.getElementById('prodAvail').checked) 
         };
         try { 
-            if(!IS_PREVIEW && supabase) { 
-                const { error: saveErr } = await supabase.from('products').upsert(payload); 
-                if (saveErr) throw saveErr;
-                await fetchPublicData(); 
-            } else { 
-                const idx = STATE.data.products.findIndex(x => x.id === payload.id); 
-                if(idx !== -1) STATE.data.products[idx] = payload; 
-                else STATE.data.products.push(payload); 
-            }
             const localIdx = STATE.data.products.findIndex(x => x.id === payload.id);
             if(localIdx !== -1) {
                 STATE.data.products[localIdx] = payload;
             } else {
                 STATE.data.products.push(payload);
             }
-            STATE.tempProdImgBase64 = '';
             saveLocalDataCache();
+
+            if(!IS_PREVIEW && supabase) { 
+                const { error: saveErr } = await supabase.from('products').upsert(payload); 
+                if (saveErr) {
+                    console.warn('Supabase product sync warning:', saveErr.message);
+                }
+            }
+            
+            STATE.tempProdImgBase64 = '';
             window.closeModal('modalAddProduct'); 
             window.renderAdminProducts(); 
             window.renderAdminPOS();
@@ -3069,14 +3072,15 @@ function saveLocalDataCache() {
                 autoReset: payload.auto_reset, 
                 resetPeriod: payload.reset_period
             };
+            saveLocalDataCache();
 
             if(!IS_PREVIEW && supabase) { 
                 const { error: setErr } = await supabase.from('settings').upsert({ id: 'app_config', ...payload }); 
-                if (setErr) throw setErr;
-                await fetchPublicData(); 
+                if (setErr) {
+                    console.warn('Supabase settings sync warning:', setErr.message);
+                }
             } 
             
-            saveLocalDataCache();
             updateHeader(); 
             updateNavMenu();
             window.updateCallButtonsVisibility();
