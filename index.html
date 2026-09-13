@@ -2294,19 +2294,31 @@
     };
 
     window.toggleProductAvail = async id => { 
+        const p = STATE.data.products.find(x => x.id === id);
+        if(!p) return;
+        const newVal = !p.available;
+        p.available = newVal;
+        window.renderAdminProducts();
         showLoad();
         try {
-            const p = STATE.data.products.find(x => x.id === id);
-            if(!p) return;
-            const newVal = !p.available;
             if(!IS_PREVIEW && supabase) {
-                await supabase.from('products').update({ available: newVal }).eq('id', id);
+                const { error: updErr } = await supabase.from('products').update({ available: newVal }).eq('id', id);
+                if(updErr) {
+                    p.available = !newVal;
+                    window.renderAdminProducts();
+                    throw updErr;
+                }
                 await fetchPublicData();
-            } else {
-                p.available = newVal;
             }
             window.renderAdminProducts();
-        } catch(e) { await window.customAlert(e.message, 'Gagal'); } finally { hideLoad(); }
+            if (document.getElementById('pageAdminPOS') && !document.getElementById('pageAdminPOS').classList.contains('d-none')) {
+                window.renderAdminPOS();
+            }
+        } catch(e) { 
+            await window.customAlert(e.message, 'Gagal'); 
+        } finally { 
+            hideLoad(); 
+        } 
     };
 
     window.editProduct = id => {
