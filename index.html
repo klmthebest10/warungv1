@@ -2342,25 +2342,39 @@
     window.saveProduct = async e => {
         e.preventDefault(); 
         showLoad();
+        const prodIdVal = document.getElementById('prodId').value;
         const payload = { 
-            id: document.getElementById('prodId').value || 'prod_' + Date.now(), 
-            name: document.getElementById('prodName').value, 
+            id: prodIdVal ? prodIdVal : ('prod_' + Date.now()), 
+            name: document.getElementById('prodName').value.trim(), 
             cat: document.getElementById('prodCat').value, 
             price: parseInt(document.getElementById('prodPrice').value) || 0, 
             img: STATE.tempProdImgBase64, 
-            available: document.getElementById('prodAvail').checked 
+            available: Boolean(document.getElementById('prodAvail').checked) 
         };
         try { 
             if(!IS_PREVIEW && supabase) { 
-                await supabase.from('products').upsert(payload); 
+                const { error: saveErr } = await supabase.from('products').upsert(payload); 
+                if (saveErr) throw saveErr;
                 await fetchPublicData(); 
             } else { 
-                const idx = STATE.data.products.findIndex(x=>x.id===payload.id); 
-                if(idx!==-1) STATE.data.products[idx] = payload; 
+                const idx = STATE.data.products.findIndex(x => x.id === payload.id); 
+                if(idx !== -1) STATE.data.products[idx] = payload; 
                 else STATE.data.products.push(payload); 
+            }
+            const localIdx = STATE.data.products.findIndex(x => x.id === payload.id);
+            if(localIdx !== -1) {
+                STATE.data.products[localIdx] = payload;
+            } else {
+                STATE.data.products.push(payload);
             }
             window.closeModal('modalAddProduct'); 
             window.renderAdminProducts(); 
+            if (document.getElementById('pageAdminPOS') && !document.getElementById('pageAdminPOS').classList.contains('d-none')) {
+                window.renderAdminPOS();
+            }
+            if (document.getElementById('pagePublic') && !document.getElementById('pagePublic').classList.contains('d-none')) {
+                window.renderPublicCatalog();
+            }
             hideLoad();
             await window.customAlert('Tersimpan!', 'Sukses');
         } catch(e) { 
