@@ -1038,6 +1038,29 @@
             { id: "c_demo", table: "Meja 1", reason: "Minta sendok tambahan", date: new Date().toISOString() }
         ];
     }
+function saveLocalDataCache() {
+        try {
+            localStorage.setItem('ww_cached_data', JSON.stringify({
+                settings: STATE.data.settings,
+                products: STATE.data.products,
+                categories: STATE.data.categories,
+                tables: STATE.data.tables
+            }));
+        } catch(e) {}
+    }
+
+    function loadLocalDataCache() {
+        try {
+            const raw = localStorage.getItem('ww_cached_data');
+            if(raw) {
+                const parsed = JSON.parse(raw);
+                if(parsed.settings) STATE.data.settings = { ...STATE.data.settings, ...parsed.settings };
+                if(Array.isArray(parsed.products) && parsed.products.length > 0) STATE.data.products = parsed.products;
+                if(Array.isArray(parsed.categories) && parsed.categories.length > 0) STATE.data.categories = parsed.categories;
+                if(Array.isArray(parsed.tables) && parsed.tables.length > 0) STATE.data.tables = parsed.tables;
+            }
+        } catch(e) {}
+    }
 
     const showLoad = () => document.getElementById('globalLoader').classList.remove('d-none');
     const hideLoad = () => document.getElementById('globalLoader').classList.add('d-none');
@@ -1401,6 +1424,7 @@
         const root = document.getElementById('gasapp-root');
         if (root && root.parentElement !== document.body) document.body.appendChild(root);
         
+        loadLocalDataCache();
         await autoSetupDatabase();
         const savedUser = localStorage.getItem('ww_user');
         if (savedUser) { 
@@ -1413,11 +1437,12 @@
         } else { 
             await fetchPublicData(); 
         }
+        saveLocalDataCache();
         
         if(STATE.data.categories.length > 0) { 
-            STATE.activeCategoryPub = STATE.data.categories[0]; 
-            STATE.activeCategoryPOS = STATE.data.categories[0]; 
-            STATE.activeCategoryCust = STATE.data.categories[0]; 
+            if (!STATE.activeCategoryPub || !STATE.data.categories.includes(STATE.activeCategoryPub)) STATE.activeCategoryPub = STATE.data.categories[0]; 
+            if (!STATE.activeCategoryPOS || !STATE.data.categories.includes(STATE.activeCategoryPOS)) STATE.activeCategoryPOS = STATE.data.categories[0]; 
+            if (!STATE.activeCategoryCust || !STATE.data.categories.includes(STATE.activeCategoryCust)) STATE.activeCategoryCust = STATE.data.categories[0]; 
         }
         updateHeader(); 
         route();
@@ -2305,12 +2330,14 @@
             window.renderAdminPOS();
         }
 
+        saveLocalDataCache();
         showLoad();
         try {
             if(!IS_PREVIEW && supabase) {
                 const { error: updErr } = await supabase.from('products').update({ available: newVal }).eq('id', id);
                 if(updErr) {
                     p.available = currentVal;
+                    saveLocalDataCache();
                     window.renderAdminProducts();
                     if (document.getElementById('pageAdminPOS') && !document.getElementById('pageAdminPOS').classList.contains('d-none')) {
                         window.renderAdminPOS();
@@ -2318,6 +2345,7 @@
                     throw updErr;
                 }
             }
+            saveLocalDataCache();
         } catch(e) { 
             await window.customAlert(e.message, 'Gagal'); 
         } finally { 
@@ -2368,6 +2396,7 @@
                 STATE.data.products.push(payload);
             }
             STATE.tempProdImgBase64 = '';
+            saveLocalDataCache();
             window.closeModal('modalAddProduct'); 
             window.renderAdminProducts(); 
             window.renderAdminPOS();
@@ -3047,6 +3076,7 @@
                 await fetchPublicData(); 
             } 
             
+            saveLocalDataCache();
             updateHeader(); 
             updateNavMenu();
             window.updateCallButtonsVisibility();
